@@ -44,6 +44,18 @@
   const DOWNLOAD_REASON_BUTTON_ID = "jlr-download-reason-button";
   const DOWNLOAD_REASON_TEXT = "리마인드 및 예약지 프린트을 위한 다운로드";
 
+  const WARRANTY_CLAIM_STATUS_BUTTON_ID = "btnGetJlrClaimStatus";
+  const WARRANTY_BRAND_SELECT_ID = "brandCd";
+  const WARRANTY_BRAND_LISTBOX_ID = "brandCd_listbox";
+  const WARRANTY_BRAND_OPTIONS = [
+    { id: "jlr-warranty-jaguar-button", label: "재규어", optionText: "Jaguar" },
+    {
+      id: "jlr-warranty-landrover-button",
+      label: "랜드로버",
+      optionText: "Land Rover",
+    },
+  ];
+
   const DEFAULT_OPINIONS = Object.freeze([
     "48시간 - 1.고객성향 및 특이사항 - ",
     "48시간 - 2.마지막 정비이력 - ",
@@ -72,6 +84,7 @@
   let claimTaskButtonEnabled = false;
   let adminReminderButtonEnabled = false;
   let receptionReminderButtonEnabled = false;
+  let warrantyBrandButtonEnabled = false;
   const reminderRowStatus = new Map();
   const manualReminderSelections = new Set();
 
@@ -85,6 +98,7 @@
         "claimTaskButtonEnabled",
         "adminReminderButtonEnabled",
         "receptionReminderButtonEnabled",
+        "warrantyBrandButtonEnabled",
       ]);
       isAdmin = Boolean(saved.isAdmin);
       grpCodeUppercaseLock = Boolean(saved.grpCodeUppercaseLock);
@@ -95,6 +109,7 @@
       receptionReminderButtonEnabled = Boolean(
         saved.receptionReminderButtonEnabled,
       );
+      warrantyBrandButtonEnabled = Boolean(saved.warrantyBrandButtonEnabled);
     } catch (error) {
       console.error("[관리자 설정] 불러오기 실패", error);
     }
@@ -1851,6 +1866,34 @@
     target.click();
   }
 
+  async function selectWarrantyBrandOption(optionText) {
+    const select = document.getElementById(WARRANTY_BRAND_SELECT_ID);
+    const wrapper = select?.closest(".k-widget.k-dropdown");
+    if (!wrapper) return false;
+
+    wrapper.click();
+    await nextFrame();
+    await nextFrame();
+
+    const listbox = document.getElementById(WARRANTY_BRAND_LISTBOX_ID);
+    const items = listbox ? Array.from(listbox.querySelectorAll("li")) : [];
+    const target = items.find((li) => li.textContent?.trim() === optionText);
+    if (!target) {
+      wrapper.click();
+      return false;
+    }
+
+    target.click();
+    await nextFrame();
+    return true;
+  }
+
+  async function applyWarrantyBrandFilter(optionText) {
+    const selected = await selectWarrantyBrandOption(optionText);
+    if (!selected) return;
+    document.getElementById(WARRANTY_CLAIM_STATUS_BUTTON_ID)?.click();
+  }
+
   function isRoSettlementPage() {
     return document.body?.innerText?.includes("RO정산관리") ?? false;
   }
@@ -1924,6 +1967,35 @@
     area.prepend(group);
   }
 
+  function installWarrantyBrandButtons() {
+    const statusButton = document.getElementById(
+      WARRANTY_CLAIM_STATUS_BUTTON_ID,
+    );
+    const group = statusButton?.closest(".btn-group");
+
+    if (!group || !isAdmin || !warrantyBrandButtonEnabled) {
+      WARRANTY_BRAND_OPTIONS.forEach((option) => {
+        document.getElementById(option.id)?.remove();
+      });
+      return;
+    }
+
+    WARRANTY_BRAND_OPTIONS.forEach((option) => {
+      if (document.getElementById(option.id)) return;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = option.id;
+      button.className = "btn btn-default k-primary k-button jlr-warranty-brand-button";
+      button.textContent = option.label;
+      button.addEventListener("click", () => {
+        applyWarrantyBrandFilter(option.optionText);
+      });
+
+      statusButton.before(button);
+    });
+  }
+
   function installDownloadReasonButton() {
     const agreeCheckbox = document.getElementById(DOWNLOAD_REASON_AGREE_ID);
     const textarea = document.getElementById(DOWNLOAD_REASON_TEXTAREA_ID);
@@ -1955,6 +2027,7 @@
     installReminderToggleButton();
     installClaimTaskButton();
     installGrpCodeQuickButtons();
+    installWarrantyBrandButtons();
     installDownloadReasonButton();
   }
 
@@ -1976,6 +2049,7 @@
       isAdmin = Boolean(changes.isAdmin.newValue);
       installClaimTaskButton();
       installGrpCodeQuickButtons();
+      installWarrantyBrandButtons();
       installReminderColumn();
       installReminderToggleButton();
     }
@@ -1998,6 +2072,12 @@
         changes.receptionReminderButtonEnabled.newValue,
       );
       installReminderToggleButton();
+    }
+    if (changes.warrantyBrandButtonEnabled) {
+      warrantyBrandButtonEnabled = Boolean(
+        changes.warrantyBrandButtonEnabled.newValue,
+      );
+      installWarrantyBrandButtons();
     }
     if (changes.isReception) {
       isReception = Boolean(changes.isReception.newValue);
