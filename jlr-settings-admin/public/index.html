@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JLR 일산서비스 설정관리</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17202a;
+        --muted: #64748b;
+        --line: #d8dee8;
+        --panel: #ffffff;
+        --soft: #f5f7fa;
+        --accent: #1687e8;
+        --accent-dark: #0b63b6;
+        --danger: #b51235;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #eef2f7;
+        color: var(--ink);
+        font-family: Arial, "Malgun Gothic", sans-serif;
+      }
+
+      main {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 28px 18px 40px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.25;
+      }
+
+      .version {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      .status,
+      form {
+        padding: 16px;
+      }
+
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      input[type="password"],
+      input[type="text"] {
+        width: 100%;
+        height: 38px;
+        margin-top: 6px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        font: 13px Arial, "Malgun Gothic", sans-serif;
+      }
+
+      button {
+        min-height: 38px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 7px;
+        font: 800 13px Arial, "Malgun Gothic", sans-serif;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
+        color: #fff;
+      }
+
+      .secondary {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #fff 0%, #f2f5f9 100%);
+        color: #263343;
+      }
+
+      .status {
+        display: none;
+        border-bottom: 1px solid var(--line);
+        color: #334155;
+        font-size: 13px;
+      }
+
+      .status[data-kind="error"] {
+        display: block;
+        color: var(--danger);
+      }
+
+      .status[data-kind="success"],
+      .status[data-kind="info"] {
+        display: block;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .toggle-row strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 14px;
+      }
+
+      .toggle-row span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .fields {
+        display: grid;
+        gap: 8px;
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) 64px;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .field-row label {
+        margin-top: 6px;
+        text-align: right;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .section-launch {
+        padding: 16px;
+      }
+
+      .section-launch button {
+        width: 100%;
+      }
+
+      .settings-form[hidden] {
+        display: none;
+      }
+
+      .delete-button {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: #334155;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        background: rgba(15, 23, 42, 0.32);
+      }
+
+      .overlay[hidden] {
+        display: none;
+      }
+
+      .modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        z-index: 1000;
+        width: min(420px, calc(100vw - 32px));
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+        transform: translate(-50%, -50%);
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .modal h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+
+      .modal .actions {
+        margin-top: 14px;
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      @media (max-width: 640px) {
+        header,
+        .actions {
+          grid-template-columns: 1fr;
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .field-row {
+          grid-template-columns: 1fr;
+          gap: 3px;
+        }
+
+        .field-row label {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>JLR 일산서비스 설정관리</h1>
+          <div id="version" class="version"></div>
+        </div>
+        <div class="header-actions">
+          <button id="reload-button" class="secondary" type="button">새로고침</button>
+          <button id="admin-token-button" class="secondary" type="button">관리자 토큰</button>
+        </div>
+      </header>
+
+      <div id="admin-token-overlay" class="overlay" hidden></div>
+      <section id="admin-token-modal" class="modal" hidden>
+        <h2>관리자 토큰</h2>
+        <label>
+          관리자 토큰
+          <input id="admin-token" type="password" autocomplete="off" placeholder="Vercel ADMIN_TOKEN" />
+        </label>
+        <div class="actions">
+          <button id="close-admin-token-button" class="secondary" type="button">닫기</button>
+          <button id="clear-token-button" class="secondary" type="button">삭제</button>
+          <button id="save-token-button" class="primary" type="button">토큰 저장</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div id="status" class="status"></div>
+        <div class="section-launch">
+          <button id="open-opinion-settings-button" class="primary" type="button">내부의견 설정</button>
+        </div>
+        <form id="settings-form" class="settings-form" hidden>
+          <div id="opinion-fields" class="fields"></div>
+          <div class="actions">
+            <button id="close-opinion-settings-button" class="secondary" type="button">메인으로</button>
+            <button id="add-opinion-button" class="secondary" type="button">추가</button>
+            <button id="reset-button" class="secondary" type="button">기본값 복원</button>
+            <button class="primary" type="submit">전체 사용자 설정 저장</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const DEFAULT_OPINIONS = Object.freeze([
+        "48시간 - 1.고객성향 및 특이사항 - ",
+        "48시간 - 2.마지막 정비이력 - ",
+        "48시간 - 3.마지막 엔진오일 교환 - ",
+        "48시간 - 4.리콜 - X",
+        "48시간 - 5.출고 요청 시간 - ",
+        "48시간 - 6.원케어 가입 - ",
+        "48시간 - 7.NSC - X",
+        "48시간 - 8.EVHC - X",
+        "48시간 - 9.입고시 엡셀링 - X",
+        "48시간 - 10.메달리아 - X",
+        "48시간 - 11.부품 - X",
+        "48시간 - 12.프리미팅 - X",
+      ]);
+
+      const fields = document.getElementById("opinion-fields");
+      const form = document.getElementById("settings-form");
+      const openOpinionSettingsButton = document.getElementById("open-opinion-settings-button");
+      const status = document.getElementById("status");
+      const tokenInput = document.getElementById("admin-token");
+      const version = document.getElementById("version");
+
+      function showStatus(message, kind = "info") {
+        status.textContent = message;
+        status.dataset.kind = kind;
+      }
+
+      function renderOpinions(opinions) {
+        fields.replaceChildren();
+        opinions.forEach((opinion, index) => {
+          const row = document.createElement("div");
+          row.className = "field-row";
+
+          const label = document.createElement("label");
+          label.htmlFor = `opinion-${index}`;
+          label.textContent = `${index + 1}번`;
+
+          const input = document.createElement("input");
+          input.id = `opinion-${index}`;
+          input.name = "opinion";
+          input.type = "text";
+          input.required = true;
+          input.value = opinion;
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "delete-button";
+          deleteButton.textContent = "삭제";
+          deleteButton.addEventListener("click", () => {
+            row.remove();
+            renumberOpinions();
+          });
+
+          row.append(label, input, deleteButton);
+          fields.append(row);
+        });
+        renumberOpinions();
+      }
+
+      function renumberOpinions() {
+        fields.querySelectorAll(".field-row").forEach((row, index) => {
+          const label = row.querySelector("label");
+          const input = row.querySelector("input[name='opinion']");
+          if (!label || !input) return;
+          input.id = `opinion-${index}`;
+          label.htmlFor = input.id;
+          label.textContent = `${index + 1}번`;
+        });
+      }
+
+      function getOpinionValues() {
+        return Array.from(fields.querySelectorAll("input[name='opinion']"), (input) =>
+          input.value.trim(),
+        );
+      }
+
+      function hasValidOpinions(opinions) {
+        return Array.isArray(opinions) && opinions.length > 0 && opinions.every(Boolean);
+      }
+
+      async function loadSettings() {
+        showStatus("설정을 불러오는 중입니다.");
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        const settings = await response.json();
+        if (!response.ok) throw new Error(settings.error || "설정을 불러오지 못했습니다.");
+        renderOpinions(hasValidOpinions(settings.opinions) ? settings.opinions : DEFAULT_OPINIONS);
+        version.textContent = settings.version ? `설정 버전: ${settings.version}` : "";
+        showStatus("현재 설정을 불러왔습니다.", "success");
+      }
+
+      async function saveSettings(event) {
+        event.preventDefault();
+        const token = tokenInput.value.trim();
+        if (!token) {
+          showStatus("관리자 토큰을 입력하세요.", "error");
+          tokenInput.focus();
+          return;
+        }
+
+        const settings = {
+          opinions: getOpinionValues(),
+        };
+        if (!hasValidOpinions(settings.opinions)) {
+          showStatus("내부의견 문구를 1개 이상 입력하세요.", "error");
+          return;
+        }
+
+        showStatus("설정을 저장하는 중입니다.");
+        const response = await fetch("/api/settings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Admin-Token": token,
+          },
+          body: JSON.stringify(settings),
+        });
+        const saved = await response.json();
+        if (!response.ok) throw new Error(saved.error || "설정을 저장하지 못했습니다.");
+        renderOpinions(saved.opinions);
+        version.textContent = `설정 버전: ${saved.version}`;
+        showStatus("전체 사용자 설정을 저장했습니다.", "success");
+      }
+
+      const adminTokenButton = document.getElementById("admin-token-button");
+      const adminTokenOverlay = document.getElementById("admin-token-overlay");
+      const adminTokenModal = document.getElementById("admin-token-modal");
+      const closeAdminTokenButton = document.getElementById("close-admin-token-button");
+
+      function openAdminTokenModal() {
+        adminTokenOverlay.hidden = false;
+        adminTokenModal.hidden = false;
+        tokenInput.focus();
+      }
+
+      function closeAdminTokenModal() {
+        adminTokenOverlay.hidden = true;
+        adminTokenModal.hidden = true;
+        adminTokenButton.focus();
+      }
+
+      adminTokenButton.addEventListener("click", openAdminTokenModal);
+      closeAdminTokenButton.addEventListener("click", closeAdminTokenModal);
+      adminTokenOverlay.addEventListener("click", closeAdminTokenModal);
+
+      document.getElementById("save-token-button").addEventListener("click", () => {
+        localStorage.setItem("jlrAdminToken", tokenInput.value.trim());
+        showStatus("이 브라우저에 관리자 토큰을 저장했습니다.", "success");
+      });
+
+      document.getElementById("clear-token-button").addEventListener("click", () => {
+        localStorage.removeItem("jlrAdminToken");
+        tokenInput.value = "";
+        showStatus("저장된 토큰을 삭제했습니다.", "success");
+      });
+
+      document.getElementById("reload-button").addEventListener("click", () => {
+        loadSettings().catch((error) => showStatus(error.message, "error"));
+      });
+
+      openOpinionSettingsButton.addEventListener("click", () => {
+        form.hidden = false;
+        openOpinionSettingsButton.hidden = true;
+        fields.querySelector("input[name='opinion']")?.focus();
+      });
+
+      document.getElementById("close-opinion-settings-button").addEventListener("click", () => {
+        form.hidden = true;
+        openOpinionSettingsButton.hidden = false;
+        openOpinionSettingsButton.focus();
+      });
+
+      document.getElementById("reset-button").addEventListener("click", () => {
+        renderOpinions(DEFAULT_OPINIONS);
+        showStatus("기본값을 불러왔습니다. 저장해야 전체 사용자에게 적용됩니다.");
+      });
+
+      document.getElementById("add-opinion-button").addEventListener("click", () => {
+        renderOpinions([...getOpinionValues(), ""]);
+        const inputs = fields.querySelectorAll("input[name='opinion']");
+        inputs[inputs.length - 1]?.focus();
+      });
+
+      form.addEventListener("submit", (event) => {
+        saveSettings(event).catch((error) => showStatus(error.message, "error"));
+      });
+
+      tokenInput.value = localStorage.getItem("jlrAdminToken") || "";
+      renderOpinions(DEFAULT_OPINIONS);
+      loadSettings().catch((error) => showStatus(error.message, "error"));
+    </script>
+  </body>
+</html>

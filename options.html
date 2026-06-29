@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JLR일산서비스 유틸</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+
+<body>
+  <main>
+    <header class="app-header">
+      <img src="icon-128.png" alt="" class="app-icon" />
+      <div class="title-group">
+        <h1>JLR일산서비스 유틸</h1>
+        <span id="version" class="version"></span>
+      </div>
+    </header>
+
+    <section id="view-home" class="view">
+      <div id="home-notice" class="notice" data-kind="info">
+        <span class="notice-dot" aria-hidden="true"></span>
+        <span id="home-notice-text">DMS 페이지에서만 작동합니다.</span>
+      </div>
+      <div class="menu">
+        <button type="button" id="opinion-menu-button" class="menu-button menu-button-secondary"
+          data-open-view="opinion" hidden>
+          내부의견
+        </button>
+        <button type="button" id="workgroup-menu-button" class="menu-button menu-button-secondary"
+          data-open-view="workgroup" hidden>
+          작업그룹
+        </button>
+        <button type="button" id="admin-button" class="menu-button menu-button-secondary">
+          관리자 로그인
+        </button>
+        <form id="admin-login-form" class="admin-login-form" hidden>
+          <label for="admin-password" class="admin-login-label">관리자 비밀번호</label>
+          <input type="password" id="admin-password" class="admin-login-input" placeholder="비밀번호 입력" autocomplete="off" />
+          <button type="submit" class="primary admin-login-submit">확인</button>
+          <p id="admin-login-error" class="jlr-admin-error" hidden>비밀번호가 올바르지 않습니다.</p>
+        </form>
+        <button type="button" id="admin-logout-button" class="back-button admin-logout-button" hidden>로그아웃</button>
+
+        <button type="button" id="reception-button" class="menu-button menu-button-secondary">
+          리셉션 로그인
+        </button>
+        <div id="reception-reminder-row" class="toggle-row" hidden>
+          <div class="toggle-row-text">
+            <span class="toggle-row-title">리마인드 버튼 표시</span>
+            <span class="toggle-row-desc">DMS 접수 화면에 "리마인드 시작/종료" 버튼을 표시합니다. 실제 시작/종료는 그 버튼으로 직접 합니다.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="reception-reminder-toggle" />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <button type="button" id="reception-logout-button" class="back-button admin-logout-button reception-logout-button" hidden>로그아웃</button>
+      </div>
+
+      <footer>Made by - 최준호</footer>
+    </section>
+
+    <section id="view-opinion" class="view" hidden>
+      <div class="sub-header">
+        <button type="button" class="back-button" data-back>← 뒤로</button>
+        <h2>내부의견 설정</h2>
+      </div>
+      <div id="notice" class="notice" data-kind="info">
+        <span class="notice-dot" aria-hidden="true"></span>
+        <span id="notice-text">내부의견 문구를 추가, 삭제, 수정한 후 저장하세요.</span>
+      </div>
+      <form id="settings-form">
+        <div id="opinion-fields"></div>
+        <div class="actions">
+          <button type="button" id="add-opinion-button" class="secondary">추가</button>
+          <button type="button" id="reset-button" class="secondary">기본값 복원</button>
+          <button type="submit" class="primary">설정 저장</button>
+        </div>
+      </form>
+      <footer>Made by - 최준호</footer>
+      <span id="status" class="sr-only" role="status" aria-live="polite"></span>
+    </section>
+
+    <section id="view-workgroup" class="view" hidden>
+      <div class="sub-header">
+        <button type="button" class="back-button" data-back>← 뒤로</button>
+        <h2>작업그룹 설정</h2>
+      </div>
+      <div class="placeholder">
+        작업그룹 설정 기능은 준비 중입니다.
+      </div>
+      <footer>Made by - 최준호</footer>
+    </section>
+
+    <section id="view-admin" class="view" hidden>
+      <div class="sub-header">
+        <button type="button" class="back-button" data-back>← 뒤로</button>
+        <h2>관리자 메뉴</h2>
+      </div>
+      <button type="button" id="settings-admin-site-button" class="menu-button menu-button-secondary">
+        설정관리
+      </button>
+      <div class="toggle-row">
+        <div class="toggle-row-text">
+          <span class="toggle-row-title">그룹코드 영문 대문자 자동 입력</span>
+          <span class="toggle-row-desc">한글 입력 상태에서도 그룹코드 칸에는 영문 대문자로 입력되게 합니다.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="grp-code-uppercase-toggle" />
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-text">
+          <span class="toggle-row-title">클레임 버튼 표시</span>
+          <span class="toggle-row-desc">일괄변경 드롭다운 옆에 클레임 버튼(ClaimTask 자동 선택)을 표시합니다.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="claim-task-button-toggle" />
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-row-text">
+          <span class="toggle-row-title">리마인드 버튼 표시</span>
+          <span class="toggle-row-desc">DMS 접수 화면에 "리마인드 시작/종료" 버튼을 표시합니다. 실제 시작/종료는 그 버튼으로 직접 합니다.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="admin-reminder-toggle" />
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <footer>Made by - 최준호</footer>
+    </section>
+
+  </main>
+  <script src="options.js"></script>
+</body>
+
+</html>

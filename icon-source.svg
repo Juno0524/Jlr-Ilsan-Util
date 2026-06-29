@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="24" fill="#0f1620"/>
+
+  <text x="64" y="58" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="30" fill="#ffffff" letter-spacing="1">FRONT</text>
+  <text x="64" y="84" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="22" fill="#1687e8">Helper</text>
+  <text x="64" y="104" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="400" font-size="13" fill="#64748b">By_Junho</text>
+</svg>

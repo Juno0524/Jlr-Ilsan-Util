@@ -1,0 +1,12 @@
+{
+  "name": "jlr-settings-admin",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "redis": "^4.7.0"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "check": "node --check api/settings.js"
+  }
+}
