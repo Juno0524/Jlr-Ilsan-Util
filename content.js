@@ -20,6 +20,11 @@
   const WORKGROUP_GRID_ID = "operItemGrpGrid";
   const WORKGROUP_FIELD = "wrkConts";
   const WORKGROUP_DETAIL_FIELD = "wrkDetlConts";
+  const WORKGROUP_CLAIM_COLUMN_HEADER_ID = "jlr-workgroup-claim-header";
+  const WORKGROUP_CLAIM_COLUMN_WIDTH = 60;
+  const WORKGROUP_CALC_CONFIRM_BUTTON_ID = "btnCalcCmn";
+  const WORKGROUP_CALC_TYPE_FIELD = "calcTpCd";
+  const WORKGROUP_CLAIM_ALLOWED_TYPES = ["리콜/캠페인", "보증", "서비스플랜"];
   const GRP_CODE_FIELD_ID = "grpCode";
   const REMINDER_GRID_ID = "grid";
   const REMINDER_COLUMN_HEADER_ID = "jlr-reminder-header";
@@ -1484,6 +1489,120 @@
     nativeWorkGroupAddButton.before(diagButton);
   }
 
+  function shrinkColForClaimColumn(col) {
+    if (!col) return;
+    const currentWidth = parseInt(col.style.width, 10);
+    if (Number.isNaN(currentWidth)) return;
+    col.dataset.jlrOriginalWidth = col.style.width;
+    col.style.width = `${Math.max(currentWidth - WORKGROUP_CLAIM_COLUMN_WIDTH, 40)}px`;
+  }
+
+  function insertClaimCol(referenceCol) {
+    if (!referenceCol) return;
+    shrinkColForClaimColumn(referenceCol);
+    const col = document.createElement("col");
+    col.className = "jlr-workgroup-claim-col";
+    col.style.width = `${WORKGROUP_CLAIM_COLUMN_WIDTH}px`;
+    referenceCol.after(col);
+  }
+
+  function restoreClaimCol(colgroup) {
+    const claimCol = colgroup?.querySelector(".jlr-workgroup-claim-col");
+    const previousCol = claimCol?.previousElementSibling;
+    if (previousCol?.dataset.jlrOriginalWidth) {
+      previousCol.style.width = previousCol.dataset.jlrOriginalWidth;
+      delete previousCol.dataset.jlrOriginalWidth;
+    }
+    claimCol?.remove();
+  }
+
+  function uninstallWorkGroupClaimColumn(gridElement) {
+    document.getElementById(WORKGROUP_CLAIM_COLUMN_HEADER_ID)?.remove();
+    gridElement
+      ?.querySelectorAll(".jlr-workgroup-claim-cell")
+      .forEach((cell) => cell.remove());
+
+    restoreClaimCol(gridElement?.querySelector(".k-grid-header colgroup"));
+    restoreClaimCol(gridElement?.querySelector(".k-grid-content colgroup"));
+  }
+
+  function installWorkGroupClaimColumn() {
+    const gridElement = document.getElementById(WORKGROUP_GRID_ID);
+    if (!gridElement) return;
+
+    if (!isAdmin || !claimTaskButtonEnabled) {
+      uninstallWorkGroupClaimColumn(gridElement);
+      return;
+    }
+
+    const wrkContsColumnId = getFieldColumnId(gridElement, WORKGROUP_FIELD);
+    const wrkContsTh = wrkContsColumnId
+      ? document.getElementById(wrkContsColumnId)
+      : null;
+    const headerColgroup = gridElement.querySelector(".k-grid-header colgroup");
+    const contentColgroup = gridElement.querySelector(".k-grid-content colgroup");
+    const rows = getWorkGroupRows(gridElement);
+    if (!wrkContsTh || !headerColgroup || !contentColgroup || rows.length === 0) {
+      return;
+    }
+
+    if (!document.getElementById(WORKGROUP_CLAIM_COLUMN_HEADER_ID)) {
+      const headerThs = Array.from(wrkContsTh.parentElement?.children || []);
+      const wrkContsIndex = headerThs.indexOf(wrkContsTh);
+
+      if (wrkContsIndex >= 0) {
+        insertClaimCol(headerColgroup.children[wrkContsIndex]);
+        insertClaimCol(contentColgroup.children[wrkContsIndex]);
+      }
+
+      const th = document.createElement("th");
+      th.id = WORKGROUP_CLAIM_COLUMN_HEADER_ID;
+      th.className = wrkContsTh.className;
+      th.setAttribute("role", "columnheader");
+      th.textContent = "청구";
+      wrkContsTh.after(th);
+    }
+
+    const calcTypeColumnId = getFieldColumnId(
+      gridElement,
+      WORKGROUP_CALC_TYPE_FIELD,
+    );
+
+    rows.forEach((row) => {
+      if (row.querySelector(".jlr-workgroup-claim-cell")) return;
+
+      const anchorCell = wrkContsColumnId
+        ? row.querySelector(`td[aria-describedby="${wrkContsColumnId}"]`)
+        : null;
+      if (!anchorCell) return;
+
+      const cell = document.createElement("td");
+      cell.className = "jlr-workgroup-claim-cell ac";
+      cell.setAttribute("aria-describedby", WORKGROUP_CLAIM_COLUMN_HEADER_ID);
+      cell.setAttribute("role", "gridcell");
+
+      const calcTypeText = calcTypeColumnId
+        ? row
+            .querySelector(`td[aria-describedby="${calcTypeColumnId}"]`)
+            ?.textContent?.trim()
+        : "";
+
+      if (WORKGROUP_CLAIM_ALLOWED_TYPES.includes(calcTypeText)) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "jlr-workgroup-claim-button";
+        button.textContent = "청구";
+        button.addEventListener("click", () => {
+          row.querySelector("input.grid-checkbox-item")?.click();
+          document.getElementById(WORKGROUP_CALC_CONFIRM_BUTTON_ID)?.click();
+        });
+        cell.append(button);
+      }
+
+      anchorCell.after(cell);
+    });
+  }
+
   function uninstallReminderColumn(gridElement) {
     document.getElementById(REMINDER_COLUMN_HEADER_ID)?.remove();
     gridElement?.querySelectorAll(".jlr-reminder-cell").forEach((cell) => cell.remove());
@@ -2022,6 +2141,7 @@
   function installAll() {
     installButton();
     installWorkGroupButtons();
+    installWorkGroupClaimColumn();
     installGrpCodeGuard();
     installReminderColumn();
     installReminderToggleButton();
@@ -2052,6 +2172,7 @@
       installWarrantyBrandButtons();
       installReminderColumn();
       installReminderToggleButton();
+      installWorkGroupClaimColumn();
     }
     if (changes.grpCodeUppercaseLock) {
       grpCodeUppercaseLock = Boolean(changes.grpCodeUppercaseLock.newValue);
@@ -2060,6 +2181,7 @@
       claimTaskButtonEnabled = Boolean(changes.claimTaskButtonEnabled.newValue);
       installClaimTaskButton();
       installGrpCodeQuickButtons();
+      installWorkGroupClaimColumn();
     }
     if (changes.adminReminderButtonEnabled) {
       adminReminderButtonEnabled = Boolean(

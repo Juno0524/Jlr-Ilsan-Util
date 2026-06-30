@@ -37,6 +37,28 @@
   color: #334155;
 }
 
+.jlr-workgroup-claim-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #1687e8;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jlr-workgroup-claim-button:hover {
+  background: #0b63b6;
+}
+
 #jlr-48h-view.jlr-48h-button:hover {
   background: #f5f7fa;
 }
