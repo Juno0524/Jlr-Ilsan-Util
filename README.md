@@ -1,6 +1,6 @@
 # One DMS 48시간 내부의견 확장 프로그램
 
-`https://www.jlrkdms.co.kr/` 안에서만 작동하는 Chrome 확장 프로그램입니다.
+`jlrkdms` 안에서만 작동하는 Chrome 확장 프로그램입니다.
 
 ## 설치
 
