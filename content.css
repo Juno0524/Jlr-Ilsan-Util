@@ -37,6 +37,28 @@
   color: #334155;
 }
 
+.jlr-workgroup-claim-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #1687e8;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jlr-workgroup-claim-button:hover {
+  background: #0b63b6;
+}
+
 #jlr-48h-view.jlr-48h-button:hover {
   background: #f5f7fa;
 }
@@ -876,32 +898,9 @@
 }
 
 .jlr-claim-task-button {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
   float: none !important;
   width: auto !important;
-  min-width: 112px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  margin: 0 6px 0 0 !important;
-  padding: 0 12px !important;
-  vertical-align: middle;
   order: -1;
-  box-sizing: border-box;
-  border: 1px solid transparent !important;
-  border-radius: 6px !important;
-  background: #1687e8 !important;
-  color: #fff !important;
-  font-family: inherit !important;
-  font-size: 14px !important;
-  font-weight: 400 !important;
-  line-height: 1 !important;
-  cursor: pointer;
-}
-
-.jlr-claim-task-button:hover {
-  background: #0b63b6 !important;
 }
 
 .jlr-claim-task-button:focus-visible {
@@ -918,6 +917,17 @@
   color: #fff !important;
   font: inherit !important;
   line-height: 1 !important;
+}
+
+.jlr-warranty-brand-button {
+  margin-right: 6px !important;
+  border: 1px solid transparent !important;
+  background: #1687e8 !important;
+  color: #fff !important;
+}
+
+.jlr-warranty-brand-button:hover {
+  background: #0b63b6 !important;
 }
 
 .jlr-grp-code-quick-buttons {

@@ -262,6 +262,35 @@
     }
   });
 
+  const warrantyBrandButtonToggle = document.getElementById(
+    "warranty-brand-button-toggle",
+  );
+
+  async function loadWarrantyBrandButtonToggle() {
+    const saved = extensionStorage
+      ? await extensionStorage.get("warrantyBrandButtonEnabled")
+      : {
+          warrantyBrandButtonEnabled:
+            localStorage.getItem("warrantyBrandButtonEnabled") === "true",
+        };
+    warrantyBrandButtonToggle.checked = Boolean(
+      saved.warrantyBrandButtonEnabled,
+    );
+  }
+
+  loadWarrantyBrandButtonToggle().catch(() => {
+    warrantyBrandButtonToggle.checked = false;
+  });
+
+  warrantyBrandButtonToggle.addEventListener("change", async () => {
+    const enabled = warrantyBrandButtonToggle.checked;
+    if (extensionStorage) {
+      await extensionStorage.set({ warrantyBrandButtonEnabled: enabled });
+    } else {
+      localStorage.setItem("warrantyBrandButtonEnabled", String(enabled));
+    }
+  });
+
   const adminReminderToggle = document.getElementById("admin-reminder-toggle");
 
   async function loadAdminReminderToggle() {
