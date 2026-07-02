@@ -1,7 +1,7 @@
 #jlr-48h-bulk-add.jlr-48h-button,
 #jlr-48h-bulk-delete.jlr-48h-button,
 #jlr-48h-view.jlr-48h-button,
-#jlr-workgroup-diag.jlr-workgroup-button,
+.jlr-workgroup-button,
 #jlr-claim-task-button.jlr-claim-task-button {
   display: inline-flex;
   align-items: center;
@@ -25,7 +25,7 @@
 }
 
 #jlr-48h-bulk-add.jlr-48h-button:hover,
-#jlr-workgroup-diag.jlr-workgroup-button:hover,
+.jlr-workgroup-button:hover,
 #jlr-claim-task-button.jlr-claim-task-button:hover {
   background: #0b63b6;
 }
@@ -35,6 +35,11 @@
   border-color: #cbd5e1;
   background: #fff;
   color: #334155;
+}
+
+.jlr-workgroup-claim-cell {
+  text-align: center;
+  vertical-align: middle;
 }
 
 .jlr-workgroup-claim-button {
@@ -77,7 +82,7 @@
 #jlr-48h-bulk-add.jlr-48h-button:focus-visible,
 #jlr-48h-bulk-delete.jlr-48h-button:focus-visible,
 #jlr-48h-view.jlr-48h-button:focus-visible,
-#jlr-workgroup-diag.jlr-workgroup-button:focus-visible,
+.jlr-workgroup-button:focus-visible,
 #jlr-claim-task-button.jlr-claim-task-button:focus-visible {
   outline: 2px solid #0b63b6;
   outline-offset: 2px;
@@ -86,7 +91,7 @@
 #jlr-48h-bulk-add.jlr-48h-button:disabled,
 #jlr-48h-bulk-delete.jlr-48h-button:disabled,
 #jlr-48h-view.jlr-48h-button:disabled,
-#jlr-workgroup-diag.jlr-workgroup-button:disabled,
+.jlr-workgroup-button:disabled,
 #jlr-claim-task-button.jlr-claim-task-button:disabled {
   cursor: wait;
   opacity: 0.72;
@@ -255,6 +260,7 @@
   color: #334155;
   font-family: inherit;
   font-size: 14px;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -328,6 +334,7 @@
 .jlr-48h-opinion-state-note {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   box-sizing: border-box;
   min-height: 28px;
@@ -339,6 +346,7 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -515,7 +523,7 @@
   }
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button {
+.jlr-workgroup-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -537,27 +545,27 @@
   cursor: pointer;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button:hover {
+.jlr-workgroup-button:hover {
   background: #0b63b6;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button:focus-visible {
+.jlr-workgroup-button:focus-visible {
   outline: 2px solid #0b63b6;
   outline-offset: 2px;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button:disabled {
+.jlr-workgroup-button:disabled {
   cursor: wait;
   opacity: 0.72;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button[data-kind="info"] {
+.jlr-workgroup-button[data-kind="info"] {
   border-color: transparent;
   background: #64748b;
   color: #fff;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button[data-kind="error"] {
+.jlr-workgroup-button[data-kind="error"] {
   border-color: transparent;
   background: #b51235;
   color: #fff;
@@ -667,6 +675,14 @@
   outline: 2px solid rgba(22, 135, 232, 0.2);
 }
 
+.jlr-workgroup-popup-input-invalid {
+  border-color: #b51235 !important;
+}
+
+.jlr-workgroup-popup-input-invalid:focus {
+  outline-color: rgba(181, 18, 53, 0.2) !important;
+}
+
 .jlr-workgroup-popup-textarea {
   height: auto;
   min-height: 72px;
@@ -736,6 +752,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.jlr-workgroup-popup-toggle-invalid .jlr-workgroup-popup-toggle-button {
+  border-color: #b51235;
 }
 
 .jlr-workgroup-popup-toggle-button {
@@ -930,6 +950,28 @@
   background: #0b63b6 !important;
 }
 
+.jlr-lbr-diag-inline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #1687e8;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jlr-lbr-diag-inline-button:hover {
+  background: #0b63b6;
+}
+
 .jlr-grp-code-quick-buttons {
   display: inline-flex !important;
   align-items: center;
@@ -969,7 +1011,37 @@
   outline-offset: 2px;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button,
+.jlr-grp-code-save-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  float: none !important;
+  min-width: 48px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 8px 0 0 !important;
+  padding: 0 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  background: #1f9d55 !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+}
+
+.jlr-grp-code-save-button:hover {
+  background: #187b43 !important;
+}
+
+.jlr-grp-code-save-button:focus-visible {
+  outline: 2px solid #187b43;
+  outline-offset: 2px;
+}
+
+.jlr-workgroup-button,
 #jlr-claim-task-button.jlr-claim-task-button {
   display: inline-flex !important;
   align-items: center !important;
@@ -999,7 +1071,7 @@
   min-width: auto !important;
 }
 
-#jlr-workgroup-diag.jlr-workgroup-button:hover,
+.jlr-workgroup-button:hover,
 #jlr-claim-task-button.jlr-claim-task-button:hover {
   background: #0b63b6 !important;
 }

@@ -11,17 +11,36 @@ function isValidOpinions(opinions) {
   );
 }
 
+function isValidEmissionParts(emissionParts) {
+  return (
+    emissionParts === undefined ||
+    (Array.isArray(emissionParts) &&
+      emissionParts.every(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          typeof item.engineeringNumber === "string" &&
+          item.engineeringNumber.trim(),
+      ))
+  );
+}
+
 function normalizeRemoteSettings(settings) {
   if (!settings || typeof settings !== "object") return null;
   if (typeof settings.version !== "string" || !settings.version.trim()) {
     return null;
   }
   if (!isValidOpinions(settings.opinions)) return null;
+  if (!isValidEmissionParts(settings.emissionParts)) return null;
 
-  return {
+  const normalized = {
     version: settings.version.trim(),
     opinions: settings.opinions,
   };
+  if (Array.isArray(settings.emissionParts)) {
+    normalized.emissionParts = settings.emissionParts;
+  }
+  return normalized;
 }
 
 async function syncRemoteSettings() {
@@ -46,17 +65,31 @@ async function syncRemoteSettings() {
   }
 
   const saved = await chrome.storage.local.get("remoteSettingsVersion");
-  if (saved.remoteSettingsVersion === remoteSettings.version) {
-    return { updated: false, version: remoteSettings.version };
-  }
+  const alreadyUpToDate = saved.remoteSettingsVersion === remoteSettings.version;
 
-  await chrome.storage.local.set({
-    opinions: remoteSettings.opinions,
+  const updates = {
     remoteSettingsVersion: remoteSettings.version,
     remoteSettingsSyncedAt: new Date().toISOString(),
-  });
+    remoteSettingsLastError: null,
+  };
+  if (!alreadyUpToDate) {
+    updates.opinions = remoteSettings.opinions;
+  }
+  if (Array.isArray(remoteSettings.emissionParts)) {
+    updates.emissionParts = remoteSettings.emissionParts;
+  }
+  await chrome.storage.local.set(updates);
 
-  return { updated: true, version: remoteSettings.version };
+  return { updated: !alreadyUpToDate, version: remoteSettings.version };
+}
+
+function recordSyncFailure(error) {
+  chrome.storage.local
+    .set({
+      remoteSettingsLastError: error.message,
+      remoteSettingsLastErrorAt: new Date().toISOString(),
+    })
+    .catch(() => {});
 }
 
 function scheduleRemoteSettingsSync() {
@@ -71,6 +104,7 @@ chrome.runtime.onInstalled.addListener(() => {
   scheduleRemoteSettingsSync();
   syncRemoteSettings().catch((error) => {
     console.error("[원격 설정] 초기 동기화 실패", error);
+    recordSyncFailure(error);
   });
 });
 
@@ -79,6 +113,7 @@ chrome.runtime.onStartup.addListener(() => {
   scheduleRemoteSettingsSync();
   syncRemoteSettings().catch((error) => {
     console.error("[원격 설정] 시작 동기화 실패", error);
+    recordSyncFailure(error);
   });
 });
 
@@ -86,6 +121,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== REMOTE_SETTINGS_ALARM) return;
   syncRemoteSettings().catch((error) => {
     console.error("[원격 설정] 동기화 실패", error);
+    recordSyncFailure(error);
   });
 });
 
@@ -95,6 +131,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .then((result) => sendResponse({ ok: true, ...result }))
       .catch((error) => {
         console.error("[원격 설정] 동기화 실패", error);
+        recordSyncFailure(error);
         sendResponse({ ok: false, message: error.message });
       });
     return true;

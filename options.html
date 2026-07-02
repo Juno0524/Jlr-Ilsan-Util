@@ -57,8 +57,47 @@
           </label>
         </div>
         <button type="button" id="reception-logout-button" class="back-button admin-logout-button reception-logout-button" hidden>로그아웃</button>
+        <div class="home-divider" aria-hidden="true"></div>
+        <button type="button" id="emissions-parts-button" class="menu-button menu-button-secondary" data-open-view="emission">
+          배출가스 부품 확인
+        </button>
       </div>
 
+      <footer>Made by - 최준호</footer>
+    </section>
+
+    <section id="view-emission" class="view" hidden>
+      <div class="sub-header">
+        <button type="button" class="back-button" data-back>← 뒤로</button>
+        <h2>엔지니어링 번호 입력</h2>
+      </div>
+      <div class="notice emission-intro-notice" data-kind="info">
+        <span class="notice-dot" aria-hidden="true"></span>
+        <span>엔지니어링 번호 1~10자리를 입력하면<br />하단에 결과를 표시합니다.</span>
+      </div>
+      <form id="emission-form" class="emission-form">
+        <label for="emission-engineering-number" class="emission-label">엔지니어링 번호</label>
+        <div class="emission-search-row">
+          <input
+            id="emission-engineering-number"
+            class="emission-input"
+            type="text"
+            inputmode="text"
+            maxlength="10"
+            minlength="1"
+            placeholder="예: 10300"
+            autocomplete="off"
+          />
+          <button type="submit" class="primary emission-submit-button">조회</button>
+        </div>
+      </form>
+      <div id="emission-lookup-notice" class="notice emission-lookup-notice" data-kind="success" hidden>
+        <span class="notice-dot" aria-hidden="true"></span>
+        <span id="emission-lookup-notice-text">조회 결과가 있더라도 해당 부품이 항상 배출가스 부품인 것은 아니므로 추가 확인이 필요합니다.</span>
+      </div>
+      <div id="emission-result" class="emission-result" aria-live="polite">
+        <p class="emission-empty">조회할 엔지니어링 번호를 입력하세요.</p>
+      </div>
       <footer>Made by - 최준호</footer>
     </section>
 
@@ -70,6 +109,10 @@
       <div id="notice" class="notice" data-kind="info">
         <span class="notice-dot" aria-hidden="true"></span>
         <span id="notice-text">내부의견 문구를 추가, 삭제, 수정한 후 저장하세요.</span>
+      </div>
+      <div class="sync-status-row">
+        <span id="sync-status-text" class="sync-status-text">동기화 확인 중...</span>
+        <button type="button" id="sync-retry-button" class="icon-button">다시 동기화</button>
       </div>
       <form id="settings-form">
         <div id="opinion-fields"></div>
@@ -94,14 +137,46 @@
       <footer>Made by - 최준호</footer>
     </section>
 
-    <section id="view-admin" class="view" hidden>
+    <section id="view-claim" class="view" hidden>
       <div class="sub-header">
-        <button type="button" class="back-button" data-back>← 뒤로</button>
-        <h2>관리자 메뉴</h2>
+        <button type="button" class="back-button" data-back="admin">← 뒤로</button>
+        <h2>클레임 청구 관련 설정</h2>
       </div>
-      <button type="button" id="settings-admin-site-button" class="menu-button menu-button-secondary">
-        설정관리
-      </button>
+      <div class="toggle-row">
+        <div class="toggle-row-text">
+          <span class="toggle-row-title">클레임 버튼 표시</span>
+          <span class="toggle-row-desc">일괄변경 드롭다운 옆에 클레임 버튼(ClaimTask 자동 선택)을 표시합니다.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="claim-task-button-toggle" />
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="grouped-section">
+        <div class="toggle-row toggle-row-grouped">
+          <div class="toggle-row-text">
+            <span class="toggle-row-title">청구 버튼 표시</span>
+            <span class="toggle-row-desc">작업그룹 표의 "청구" 버튼(행 선택 후 정산확정)을 표시합니다.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="workgroup-claim-button-toggle" />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="sub-field-row sub-field-row-grouped">
+          <button type="button" id="workgroup-claim-types-toggle-button" class="usage-stats-toggle" aria-expanded="false">
+            <span class="toggle-row-title">청구 가능 유형</span>
+            <span class="usage-stats-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="workgroup-claim-types-body" hidden>
+            <ul id="workgroup-claim-types-list" class="claim-types-list"></ul>
+            <div class="sub-field-row-controls">
+              <input type="text" id="workgroup-claim-types-new-input" placeholder="새 유형 이름 입력" />
+              <button type="button" id="workgroup-claim-types-add-button" class="icon-button">추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="toggle-row">
         <div class="toggle-row-text">
           <span class="toggle-row-title">그룹코드 영문 대문자 자동 입력</span>
@@ -114,14 +189,49 @@
       </div>
       <div class="toggle-row">
         <div class="toggle-row-text">
-          <span class="toggle-row-title">클레임 청구 기능 버튼 표시</span>
-          <span class="toggle-row-desc">일괄변경 드롭다운 옆 클레임 버튼(ClaimTask 자동 선택)과, 작업그룹 표의 "청구" 버튼(행 선택 후 정산확정)을 표시합니다.</span>
+          <span class="toggle-row-title">재규어/랜드로버 버튼 표시</span>
+          <span class="toggle-row-desc">Warranty Claim 상세 현황의 "Claim 상태 최신화" 옆에 브랜드 자동 선택 버튼을 표시합니다.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="claim-task-button-toggle" />
+          <input type="checkbox" id="warranty-brand-button-toggle" />
           <span class="switch-track"></span>
         </label>
       </div>
+      <div class="usage-stats" hidden>
+        <div class="usage-stats-header">
+          <button type="button" id="usage-stats-toggle-button" class="usage-stats-toggle" aria-expanded="false">
+            <span class="toggle-row-title">사용 횟수</span>
+            <span class="usage-stats-chevron" aria-hidden="true">▾</span>
+          </button>
+          <button type="button" id="usage-stats-reset-button" class="icon-button">초기화</button>
+        </div>
+        <ul id="usage-stats-list" class="usage-stats-list" hidden></ul>
+      </div>
+      <footer>Made by - 최준호</footer>
+    </section>
+
+    <section id="view-admin" class="view" hidden>
+      <div class="sub-header">
+        <button type="button" class="back-button" data-back>← 뒤로</button>
+        <h2>관리자 메뉴</h2>
+        <button type="button" id="settings-admin-site-button" class="icon-button sub-header-action">
+          설정관리
+        </button>
+      </div>
+      <div class="toggle-row toggle-row-accent">
+        <div class="toggle-row-text">
+          <span class="toggle-row-title">전체 켜기/끄기</span>
+          <span id="toggles-all-status" class="toggle-row-desc">켜진 기능 없음</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggles-all-toggle" />
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <button type="button" id="claim-menu-button" class="menu-button menu-button-secondary"
+        data-open-view="claim">
+        클레임 청구 관련 설정
+      </button>
       <div class="toggle-row">
         <div class="toggle-row-text">
           <span class="toggle-row-title">리마인드 버튼 표시</span>
@@ -129,16 +239,6 @@
         </div>
         <label class="switch">
           <input type="checkbox" id="admin-reminder-toggle" />
-          <span class="switch-track"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-row-text">
-          <span class="toggle-row-title">재규어/랜드로버 버튼 표시</span>
-          <span class="toggle-row-desc">Warranty Claim 상세 현황의 "Claim 상태 최신화" 옆에 브랜드 자동 선택 버튼을 표시합니다.</span>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="warranty-brand-button-toggle" />
           <span class="switch-track"></span>
         </label>
       </div>

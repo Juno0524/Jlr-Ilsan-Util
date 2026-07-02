@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "dev": "vercel dev",

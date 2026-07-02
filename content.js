@@ -24,7 +24,19 @@
   const WORKGROUP_CLAIM_COLUMN_WIDTH = 60;
   const WORKGROUP_CALC_CONFIRM_BUTTON_ID = "btnCalcCmn";
   const WORKGROUP_CALC_TYPE_FIELD = "calcTpCd";
-  const WORKGROUP_CLAIM_ALLOWED_TYPES = ["리콜/캠페인", "보증", "서비스플랜"];
+  const DEFAULT_WORKGROUP_CLAIM_TYPES = [
+    { name: "리콜/캠페인", enabled: true },
+    { name: "보증", enabled: true },
+    { name: "서비스플랜", enabled: true },
+  ];
+
+  function deriveAllowedClaimTypes(catalog) {
+    return Array.isArray(catalog)
+      ? catalog.filter((type) => type?.enabled).map((type) => type.name)
+      : DEFAULT_WORKGROUP_CLAIM_TYPES.filter((type) => type.enabled).map(
+          (type) => type.name,
+        );
+  }
   const GRP_CODE_FIELD_ID = "grpCode";
   const REMINDER_GRID_ID = "grid";
   const REMINDER_COLUMN_HEADER_ID = "jlr-reminder-header";
@@ -43,6 +55,8 @@
   const GRP_CODE_APPLY_BUTTON_ID = "btnGrpCodeChange";
   const GRP_CODE_QUICK_BUTTON_GROUP_ID = "jlr-grp-code-quick-buttons";
   const GRP_CODE_QUICK_LETTERS = ["A", "B", "C", "D", "E"];
+  const GRP_CODE_SAVE_BUTTON_ID = "jlr-grp-code-save-button";
+  const TEMP_CALC_SAVE_BUTTON_ID = "btnTempCalcCpe";
 
   const DOWNLOAD_REASON_AGREE_ID = "agreeCheckboxBtn";
   const DOWNLOAD_REASON_TEXTAREA_ID = "txtConts";
@@ -60,6 +74,13 @@
       optionText: "Land Rover",
     },
   ];
+
+  const LBR_GRID_ID = "lbrGrid";
+  const LBR_REASON_FIELD = "sroTimeDescr";
+  const LBR_ITEM_CODE_FIELD = "itemCd";
+  const LBR_DIAG_MATCH_ITEM_CODE = "010199";
+  const LBR_DIAG_BUTTON_CLASS = "jlr-lbr-diag-inline-button";
+  const LBR_DIAG_TEXT = "Diagnosis and inspection.";
 
   const DEFAULT_OPINIONS = Object.freeze([
     "48시간 - 1.고객성향 및 특이사항 - ",
@@ -87,11 +108,34 @@
   let isReception = false;
   let reminderActive = false;
   let claimTaskButtonEnabled = false;
+  let workGroupClaimButtonEnabled = false;
   let adminReminderButtonEnabled = false;
   let receptionReminderButtonEnabled = false;
   let warrantyBrandButtonEnabled = false;
+  let workgroupClaimAllowedTypes = deriveAllowedClaimTypes(
+    DEFAULT_WORKGROUP_CLAIM_TYPES,
+  );
   const reminderRowStatus = new Map();
   const manualReminderSelections = new Set();
+
+  function isExtensionContextInvalidated(error) {
+    return Boolean(error?.message?.includes("Extension context invalidated"));
+  }
+
+  async function incrementUsageCount(key) {
+    if (!globalThis.chrome?.storage?.local) return;
+    try {
+      const saved = await chrome.storage.local.get("usageStats");
+      const stats = saved.usageStats && typeof saved.usageStats === "object"
+        ? saved.usageStats
+        : {};
+      stats[key] = (stats[key] || 0) + 1;
+      await chrome.storage.local.set({ usageStats: stats });
+    } catch (error) {
+      if (isExtensionContextInvalidated(error)) return;
+      console.error("[사용 횟수] 기록 실패", error);
+    }
+  }
 
   async function loadAdminFlags() {
     try {
@@ -101,21 +145,28 @@
         "isReception",
         "reminderActive",
         "claimTaskButtonEnabled",
+        "workGroupClaimButtonEnabled",
         "adminReminderButtonEnabled",
         "receptionReminderButtonEnabled",
         "warrantyBrandButtonEnabled",
+        "workgroupClaimTypes",
       ]);
       isAdmin = Boolean(saved.isAdmin);
       grpCodeUppercaseLock = Boolean(saved.grpCodeUppercaseLock);
       isReception = Boolean(saved.isReception);
       reminderActive = Boolean(saved.reminderActive);
       claimTaskButtonEnabled = Boolean(saved.claimTaskButtonEnabled);
+      workGroupClaimButtonEnabled = Boolean(saved.workGroupClaimButtonEnabled);
       adminReminderButtonEnabled = Boolean(saved.adminReminderButtonEnabled);
       receptionReminderButtonEnabled = Boolean(
         saved.receptionReminderButtonEnabled,
       );
       warrantyBrandButtonEnabled = Boolean(saved.warrantyBrandButtonEnabled);
+      workgroupClaimAllowedTypes = deriveAllowedClaimTypes(
+        saved.workgroupClaimTypes,
+      );
     } catch (error) {
+      if (isExtensionContextInvalidated(error)) return;
       console.error("[관리자 설정] 불러오기 실패", error);
     }
   }
@@ -240,6 +291,7 @@
         opinions = [...saved.opinions];
       }
     } catch (error) {
+      if (isExtensionContextInvalidated(error)) return;
       console.error("[48시간 내부의견] 설정 불러오기 실패", error);
     }
   }
@@ -248,12 +300,16 @@
     try {
       await chrome.runtime.sendMessage({ type: "sync-remote-settings" });
     } catch (error) {
+      if (isExtensionContextInvalidated(error)) return;
       console.warn("[원격 설정] 동기화 실패", error);
     }
   }
 
   function opinionKey(opinion) {
-    return opinion.split(" - ", 2).join(" - ");
+    return opinion
+      .split(" - ", 2)
+      .join(" - ")
+      .replace(/\s*[-－–—]\s*$/, "");
   }
 
   function getOpinionRows(gridElement) {
@@ -836,6 +892,7 @@
       toggleButton.textContent = option;
       toggleButton.addEventListener("click", () => {
         errorText.hidden = true;
+        confirmedToggle.classList.remove("jlr-workgroup-popup-toggle-invalid");
         if (confirmedValue === option) {
           confirmedValue = "";
           toggleButton.classList.remove("is-selected");
@@ -873,11 +930,38 @@
     confirmButton.className =
       "jlr-workgroup-popup-button jlr-workgroup-popup-confirm";
     confirmButton.textContent = "확인";
+    const INVALID_INPUT_CLASS = "jlr-workgroup-popup-input-invalid";
+    const INVALID_TOGGLE_CLASS = "jlr-workgroup-popup-toggle-invalid";
+
+    function markInvalid(el) {
+      el.classList.add(INVALID_INPUT_CLASS);
+    }
+
+    function clearInvalid(el) {
+      el.classList.remove(INVALID_INPUT_CLASS);
+    }
+
+    [symptomInput, generalRepro, soundTypeInput, noiseConditionInput].forEach(
+      (el) => {
+        el.addEventListener("input", () => {
+          clearInvalid(el);
+          errorText.hidden = true;
+        });
+      },
+    );
+
     confirmButton.addEventListener("click", () => {
+      const missing = [];
+
+      symptomInput.classList.remove(INVALID_INPUT_CLASS);
+      generalRepro.classList.remove(INVALID_INPUT_CLASS);
+      soundTypeInput.classList.remove(INVALID_INPUT_CLASS);
+      noiseConditionInput.classList.remove(INVALID_INPUT_CLASS);
+      confirmedToggle.classList.remove(INVALID_TOGGLE_CLASS);
+
       if (!confirmedValue) {
-        errorText.textContent = "모든 항목을 입력해 주세요.";
-        errorText.hidden = false;
-        return;
+        missing.push("증상 확인 여부");
+        confirmedToggle.classList.add(INVALID_TOGGLE_CLASS);
       }
 
       let wrkConts = "";
@@ -886,8 +970,16 @@
       if (diagType === "general") {
         const symptom = symptomInput.value.trim();
         const repro = generalRepro.value.trim();
-        if (!symptom || !repro) {
-          errorText.textContent = "모든 항목을 입력해 주세요.";
+        if (!symptom) {
+          missing.push("증상");
+          markInvalid(symptomInput);
+        }
+        if (!repro) {
+          missing.push("재현 방법 및 상세 조건");
+          markInvalid(generalRepro);
+        }
+        if (missing.length > 0) {
+          errorText.textContent = `다음 항목을 입력해 주세요: ${missing.join(", ")}`;
           errorText.hidden = false;
           return;
         }
@@ -903,8 +995,16 @@
         const soundType = soundTypeInput.value.trim();
         const repro = noiseRepro.value.trim();
         const conditionText = noiseConditionInput.value.trim();
-        if (!soundType || !conditionText) {
-          errorText.textContent = "모든 항목을 입력해 주세요.";
+        if (!soundType) {
+          missing.push("증상");
+          markInvalid(soundTypeInput);
+        }
+        if (!conditionText) {
+          missing.push("소음 발생 조건/상황");
+          markInvalid(noiseConditionInput);
+        }
+        if (missing.length > 0) {
+          errorText.textContent = `다음 항목을 입력해 주세요: ${missing.join(", ")}`;
           errorText.hidden = false;
           return;
         }
@@ -933,7 +1033,7 @@
     cancelButton.className =
       "jlr-workgroup-popup-button jlr-workgroup-popup-cancel";
     cancelButton.textContent = "취소";
-    cancelButton.addEventListener("click", () => closeDiagPopup());
+    cancelButton.addEventListener("click", () => requestCloseDiagPopup());
 
     actions.append(cancelButton, confirmButton);
     popup.append(title, fieldsWrap, errorText, actions);
@@ -941,9 +1041,36 @@
     const overlay = document.createElement("div");
     overlay.id = WORKGROUP_DIAG_OVERLAY_ID;
     overlay.className = "jlr-workgroup-popup-overlay";
-    overlay.addEventListener("click", () => closeDiagPopup());
+    overlay.addEventListener("click", () => requestCloseDiagPopup());
 
     document.body.append(overlay, popup);
+
+    function hasUnsavedDiagChanges() {
+      if (confirmedValue) return true;
+      if (diagType === "general") {
+        return Boolean(
+          symptomInput.value.trim() ||
+            generalConditionInput.value.trim() ||
+            generalRepro.value.trim() ||
+            generalCondition.getValues().length > 0,
+        );
+      }
+      return Boolean(
+        soundTypeInput.value.trim() ||
+          noiseLocationInput.value.trim() ||
+          noiseConditionInput.value.trim() ||
+          noiseRepro.value.trim() ||
+          noiseLocation.getValues().length > 0,
+      );
+    }
+
+    function requestCloseDiagPopup() {
+      if (hasUnsavedDiagChanges()) {
+        showEscConfirm();
+      } else {
+        closeDiagPopup();
+      }
+    }
 
     diagKeydownHandler = (event) => {
       if (event.key !== "Escape") return;
@@ -951,7 +1078,7 @@
       if (document.getElementById(WORKGROUP_DIAG_ESC_CONFIRM_ID)) {
         closeEscConfirm();
       } else {
-        showEscConfirm();
+        requestCloseDiagPopup();
       }
     };
     document.addEventListener("keydown", diagKeydownHandler);
@@ -1151,9 +1278,12 @@
       number.textContent = String(item.number);
 
       const prefixValue = `${item.key} - `;
-      const suffixValue = item.text.startsWith(prefixValue)
+      const rawSuffixValue = item.text.startsWith(prefixValue)
         ? item.text.slice(prefixValue.length)
         : "";
+      const suffixValue = /^[-－–—]*$/.test(rawSuffixValue.trim())
+        ? ""
+        : rawSuffixValue;
       const prefix = document.createElement("span");
       prefix.className = "jlr-48h-opinion-prefix";
       prefix.textContent = prefixValue;
@@ -1530,7 +1660,7 @@
     const gridElement = document.getElementById(WORKGROUP_GRID_ID);
     if (!gridElement) return;
 
-    if (!isAdmin || !claimTaskButtonEnabled) {
+    if (!isAdmin || !workGroupClaimButtonEnabled || !isRoSettlementPage()) {
       uninstallWorkGroupClaimColumn(gridElement);
       return;
     }
@@ -1587,14 +1717,22 @@
             ?.textContent?.trim()
         : "";
 
-      if (WORKGROUP_CLAIM_ALLOWED_TYPES.includes(calcTypeText)) {
+      if (workgroupClaimAllowedTypes.includes(calcTypeText)) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "jlr-workgroup-claim-button";
         button.textContent = "청구";
-        button.addEventListener("click", () => {
-          row.querySelector("input.grid-checkbox-item")?.click();
+        button.addEventListener("click", async () => {
+          const currentRow = button.closest("tr");
+          const currentAnchorCell = wrkContsColumnId
+            ? currentRow?.querySelector(
+                `td[aria-describedby="${wrkContsColumnId}"]`,
+              )
+            : null;
+          currentAnchorCell?.click();
+          await nextFrame();
           document.getElementById(WORKGROUP_CALC_CONFIRM_BUTTON_ID)?.click();
+          incrementUsageCount("workGroupClaim");
         });
         cell.append(button);
       }
@@ -1922,8 +2060,9 @@
 
   function installReminderToggleButton() {
     const visible =
-      (isReception && receptionReminderButtonEnabled) ||
-      (isAdmin && adminReminderButtonEnabled);
+      ((isReception && receptionReminderButtonEnabled) ||
+        (isAdmin && adminReminderButtonEnabled)) &&
+      isServiceReservationPage();
     if (!visible) {
       document.getElementById(REMINDER_TOGGLE_BUTTON_ID)?.remove();
       return;
@@ -1946,7 +2085,9 @@
     toggleButton.addEventListener("click", async () => {
       try {
         await chrome.storage.local.set({ reminderActive: !reminderActive });
+        incrementUsageCount("reminderToggle");
       } catch (error) {
+        if (isExtensionContextInvalidated(error)) return;
         console.error("[리마인드] 상태 변경 실패", error);
       }
     });
@@ -2017,6 +2158,10 @@
     return document.body?.innerText?.includes("RO정산관리") ?? false;
   }
 
+  function isServiceReservationPage() {
+    return document.body?.innerText?.includes("서비스예약현황") ?? false;
+  }
+
   function installClaimTaskButton() {
     const area = document.getElementById(TYPE_CHANGE_AREA_ID);
     const existing = document.getElementById(CLAIM_TASK_BUTTON_ID);
@@ -2035,6 +2180,7 @@
     button.textContent = "클레임";
     button.addEventListener("click", () => {
       selectClaimTaskOption();
+      incrementUsageCount("claimTask");
     });
 
     area.prepend(button);
@@ -2070,6 +2216,16 @@
     const group = document.createElement("div");
     group.id = GRP_CODE_QUICK_BUTTON_GROUP_ID;
     group.className = "jlr-grp-code-quick-buttons";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.id = GRP_CODE_SAVE_BUTTON_ID;
+    saveButton.className = "btn k-button jlr-grp-code-save-button";
+    saveButton.textContent = "저장";
+    saveButton.addEventListener("click", () => {
+      document.getElementById(TEMP_CALC_SAVE_BUTTON_ID)?.click();
+    });
+    group.append(saveButton);
 
     GRP_CODE_QUICK_LETTERS.forEach((letter) => {
       const button = document.createElement("button");
@@ -2109,9 +2265,65 @@
       button.textContent = option.label;
       button.addEventListener("click", () => {
         applyWarrantyBrandFilter(option.optionText);
+        incrementUsageCount("warrantyBrand");
       });
 
       statusButton.before(button);
+    });
+  }
+
+  function installLbrDiagButton() {
+    const grid = document.getElementById(LBR_GRID_ID);
+    if (!grid) return;
+
+    const reasonColumnId = getFieldColumnId(grid, LBR_REASON_FIELD);
+    const itemCdColumnId = getFieldColumnId(grid, LBR_ITEM_CODE_FIELD);
+    if (!reasonColumnId || !itemCdColumnId) return;
+
+    Array.from(grid.querySelectorAll("tbody tr")).forEach((row) => {
+      const reasonCell = row.querySelector(
+        `td[aria-describedby="${reasonColumnId}"]`,
+      );
+      const itemCdCell = row.querySelector(
+        `td[aria-describedby="${itemCdColumnId}"]`,
+      );
+      if (!reasonCell || !itemCdCell) return;
+
+      const existingButton = reasonCell.querySelector(
+        `.${LBR_DIAG_BUTTON_CLASS}`,
+      );
+      const itemCdMatches =
+        itemCdCell.textContent.trim() === LBR_DIAG_MATCH_ITEM_CODE;
+      const activeInput = reasonCell.querySelector("input, textarea");
+      const hasReasonValue = activeInput
+        ? Boolean(activeInput.value.trim())
+        : Array.from(reasonCell.childNodes).some(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+          );
+
+      if (!itemCdMatches || hasReasonValue) {
+        existingButton?.remove();
+        return;
+      }
+
+      if (existingButton) return;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = LBR_DIAG_BUTTON_CLASS;
+      button.textContent = "진단";
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        reasonCell.click();
+        const input = reasonCell.querySelector("input, textarea");
+        if (input) {
+          setEditorValue(input, LBR_DIAG_TEXT);
+        }
+        button.remove();
+      });
+
+      reasonCell.append(button);
     });
   }
 
@@ -2149,6 +2361,7 @@
     installGrpCodeQuickButtons();
     installWarrantyBrandButtons();
     installDownloadReasonButton();
+    installLbrDiagButton();
   }
 
   async function initialize() {
@@ -2181,6 +2394,11 @@
       claimTaskButtonEnabled = Boolean(changes.claimTaskButtonEnabled.newValue);
       installClaimTaskButton();
       installGrpCodeQuickButtons();
+    }
+    if (changes.workGroupClaimButtonEnabled) {
+      workGroupClaimButtonEnabled = Boolean(
+        changes.workGroupClaimButtonEnabled.newValue,
+      );
       installWorkGroupClaimColumn();
     }
     if (changes.adminReminderButtonEnabled) {
@@ -2201,6 +2419,15 @@
       );
       installWarrantyBrandButtons();
     }
+    if (changes.workgroupClaimTypes) {
+      workgroupClaimAllowedTypes = deriveAllowedClaimTypes(
+        changes.workgroupClaimTypes.newValue,
+      );
+      uninstallWorkGroupClaimColumn(
+        document.getElementById(WORKGROUP_GRID_ID),
+      );
+      installWorkGroupClaimColumn();
+    }
     if (changes.isReception) {
       isReception = Boolean(changes.isReception.newValue);
       installReminderColumn();
@@ -2217,8 +2444,15 @@
     }
   });
 
+  const OWN_ELEMENT_SELECTOR = '[id^="jlr-"], [class*="jlr-"]';
+
+  function isOwnMutation(record) {
+    return Boolean(record.target?.closest?.(OWN_ELEMENT_SELECTOR));
+  }
+
   let installAllScheduled = false;
-  function scheduleInstallAll() {
+  function scheduleInstallAll(mutations) {
+    if (mutations?.every(isOwnMutation)) return;
     if (installAllScheduled) return;
     installAllScheduled = true;
     window.requestAnimationFrame(() => {

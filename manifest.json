@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "JLR일산서비스 유틸",
-  "version": "3.3",
-  "description": "One DMS 내부의견 48시간 점검 일괄추가 및 작업그룹 빠른 입력을 지원합니다.",
+  "name": "JLR Ilsan Helper",
+  "version": "3.6",
+  "description": "One DMS 업무를 빠르게 처리할 수 있도록 내부의견 입력, 작업그룹 처리, 배출가스 부품 조회를 지원하는 보조 도구입니다.",
   "icons": {
     "16": "icon-16.png",
     "32": "icon-32.png",
@@ -10,7 +10,7 @@
     "128": "icon-128.png"
   },
   "action": {
-    "default_title": "JLR일산서비스 유틸",
+    "default_title": "JLR Ilsan Helper",
     "default_icon": {
       "16": "icon-16.png",
       "32": "icon-32.png",

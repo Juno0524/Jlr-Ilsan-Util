@@ -78,14 +78,24 @@
       }
 
       input[type="password"],
-      input[type="text"] {
+      input[type="text"],
+      input[type="file"] {
         width: 100%;
-        height: 38px;
         margin-top: 6px;
-        padding: 0 10px;
         border: 1px solid var(--line);
         border-radius: 6px;
         font: 13px Arial, "Malgun Gothic", sans-serif;
+      }
+
+      input[type="password"],
+      input[type="text"] {
+        height: 38px;
+        padding: 0 10px;
+      }
+
+      input[type="file"] {
+        padding: 8px 10px;
+        background: #fff;
       }
 
       button {
@@ -183,7 +193,18 @@
         width: 100%;
       }
 
-      .settings-form[hidden] {
+      .section-launch + .section-launch {
+        border-top: 1px solid var(--line);
+      }
+
+      .section-meta {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .settings-form[hidden],
+      .emission-settings[hidden] {
         display: none;
       }
 
@@ -261,6 +282,7 @@
           <div id="version" class="version"></div>
         </div>
         <div class="header-actions">
+          <button id="back-to-main-button" class="secondary" type="button" hidden>메인으로</button>
           <button id="reload-button" class="secondary" type="button">새로고침</button>
           <button id="admin-token-button" class="secondary" type="button">관리자 토큰</button>
         </div>
@@ -285,15 +307,27 @@
         <div class="section-launch">
           <button id="open-opinion-settings-button" class="primary" type="button">내부의견 설정</button>
         </div>
+        <div class="section-launch">
+          <button id="open-emission-settings-button" class="primary" type="button">배출가스 부품 확인 설정</button>
+        </div>
         <form id="settings-form" class="settings-form" hidden>
           <div id="opinion-fields" class="fields"></div>
           <div class="actions">
-            <button id="close-opinion-settings-button" class="secondary" type="button">메인으로</button>
             <button id="add-opinion-button" class="secondary" type="button">추가</button>
             <button id="reset-button" class="secondary" type="button">기본값 복원</button>
             <button class="primary" type="submit">전체 사용자 설정 저장</button>
           </div>
         </form>
+        <div id="emission-settings" class="section-launch emission-settings" hidden>
+          <label for="emission-file-input">
+            <strong>배출가스 부품 파일 업로드</strong>
+            <span class="section-meta" id="emission-parts-summary">현재 업로드된 기준 파일이 없습니다.</span>
+            <input id="emission-file-input" type="file" accept=".xlsx,.xls" />
+          </label>
+          <div class="actions">
+            <button id="upload-emission-file-button" class="primary" type="button">배출가스 기준 업로드</button>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -316,9 +350,15 @@
       const fields = document.getElementById("opinion-fields");
       const form = document.getElementById("settings-form");
       const openOpinionSettingsButton = document.getElementById("open-opinion-settings-button");
+      const openEmissionSettingsButton = document.getElementById("open-emission-settings-button");
+      const emissionSettings = document.getElementById("emission-settings");
+      const backToMainButton = document.getElementById("back-to-main-button");
       const status = document.getElementById("status");
       const tokenInput = document.getElementById("admin-token");
       const version = document.getElementById("version");
+      const emissionFileInput = document.getElementById("emission-file-input");
+      const emissionPartsSummary = document.getElementById("emission-parts-summary");
+      const uploadEmissionFileButton = document.getElementById("upload-emission-file-button");
 
       function showStatus(message, kind = "info") {
         status.textContent = message;
@@ -378,12 +418,20 @@
         return Array.isArray(opinions) && opinions.length > 0 && opinions.every(Boolean);
       }
 
+      function renderEmissionPartsSummary(settings) {
+        const count = Array.isArray(settings.emissionParts) ? settings.emissionParts.length : 0;
+        emissionPartsSummary.textContent = count > 0
+          ? `현재 ${count}건의 배출가스 부품 기준이 저장되어 있습니다.`
+          : "현재 업로드된 기준 파일이 없습니다.";
+      }
+
       async function loadSettings() {
         showStatus("설정을 불러오는 중입니다.");
         const response = await fetch("/api/settings", { cache: "no-store" });
         const settings = await response.json();
         if (!response.ok) throw new Error(settings.error || "설정을 불러오지 못했습니다.");
         renderOpinions(hasValidOpinions(settings.opinions) ? settings.opinions : DEFAULT_OPINIONS);
+        renderEmissionPartsSummary(settings);
         version.textContent = settings.version ? `설정 버전: ${settings.version}` : "";
         showStatus("현재 설정을 불러왔습니다.", "success");
       }
@@ -457,16 +505,86 @@
         loadSettings().catch((error) => showStatus(error.message, "error"));
       });
 
+      function showMainLaunchButtons() {
+        form.hidden = true;
+        emissionSettings.hidden = true;
+        openOpinionSettingsButton.hidden = false;
+        openEmissionSettingsButton.hidden = false;
+        backToMainButton.hidden = true;
+      }
+
+      async function uploadEmissionFile() {
+        const token = tokenInput.value.trim();
+        if (!token) {
+          showStatus("관리자 토큰을 입력하세요.", "error");
+          tokenInput.focus();
+          return;
+        }
+
+        const file = emissionFileInput.files?.[0];
+        if (!file) {
+          showStatus("업로드할 엑셀 파일을 선택하세요.", "error");
+          emissionFileInput.focus();
+          return;
+        }
+
+        showStatus("배출가스 부품 기준 파일을 업로드하는 중입니다.");
+        const fileBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(fileBuffer);
+        let binary = "";
+        bytes.forEach((byte) => {
+          binary += String.fromCharCode(byte);
+        });
+        const fileContentBase64 = btoa(binary);
+
+        const response = await fetch("/api/emission-parts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Admin-Token": token,
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileContentBase64,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "배출가스 부품 기준 파일을 업로드하지 못했습니다.");
+        }
+
+        emissionFileInput.value = "";
+        version.textContent = result.version ? `설정 버전: ${result.version}` : "";
+        showStatus(
+          `${result.fileName || "엑셀 파일"} 기준 ${result.emissionPartsCount}건을 저장했습니다.`,
+          "success",
+        );
+        await loadSettings();
+      }
+
+      uploadEmissionFileButton.addEventListener("click", () => {
+        uploadEmissionFile().catch((error) => showStatus(error.message, "error"));
+      });
+
       openOpinionSettingsButton.addEventListener("click", () => {
         form.hidden = false;
         openOpinionSettingsButton.hidden = true;
+        openEmissionSettingsButton.hidden = true;
+        backToMainButton.hidden = false;
         fields.querySelector("input[name='opinion']")?.focus();
       });
 
-      document.getElementById("close-opinion-settings-button").addEventListener("click", () => {
-        form.hidden = true;
-        openOpinionSettingsButton.hidden = false;
+      backToMainButton.addEventListener("click", () => {
+        showMainLaunchButtons();
         openOpinionSettingsButton.focus();
+      });
+
+      openEmissionSettingsButton.addEventListener("click", () => {
+        emissionSettings.hidden = false;
+        openOpinionSettingsButton.hidden = true;
+        openEmissionSettingsButton.hidden = true;
+        backToMainButton.hidden = false;
+        emissionFileInput.focus();
       });
 
       document.getElementById("reset-button").addEventListener("click", () => {

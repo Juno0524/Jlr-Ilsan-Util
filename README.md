@@ -1,4 +1,4 @@
-# One DMS 48시간 내부의견 확장 프로그램
+# JLR Ilsan Helper
 
 `https://www.jlrkdms.co.kr/` 안에서만 작동하는 Chrome 확장 프로그램입니다.
 

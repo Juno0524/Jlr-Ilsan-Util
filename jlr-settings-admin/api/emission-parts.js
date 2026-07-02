@@ -1,3 +1,6 @@
+const XLSX = require("xlsx");
+const { createClient } = require("redis");
+
 const SETTINGS_KEY = "jlr:settings";
 let redisClientPromise = null;
 
@@ -22,7 +25,7 @@ const DEFAULT_SETTINGS = Object.freeze({
 
 function setCors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token");
 }
 
@@ -37,7 +40,6 @@ async function getRedisClient() {
 
   if (!redisClientPromise) {
     redisClientPromise = Promise.resolve().then(async () => {
-      const { createClient } = require("redis");
       const client = createClient({ url: process.env.REDIS_URL });
       client.on("error", (error) => {
         console.error("Redis client error", error);
@@ -58,7 +60,16 @@ async function readSettings() {
   if (!result) return DEFAULT_SETTINGS;
 
   const parsed = JSON.parse(result);
-  return normalizeSettings(parsed);
+  return {
+    version:
+      typeof parsed.version === "string" && parsed.version.trim()
+        ? parsed.version.trim()
+        : DEFAULT_SETTINGS.version,
+    opinions: Array.isArray(parsed.opinions) && parsed.opinions.length > 0
+      ? parsed.opinions
+      : DEFAULT_SETTINGS.opinions,
+    emissionParts: Array.isArray(parsed.emissionParts) ? parsed.emissionParts : [],
+  };
 }
 
 async function writeSettings(settings) {
@@ -83,51 +94,41 @@ async function readRequestBody(req) {
   return rawBody ? JSON.parse(rawBody) : {};
 }
 
-function normalizeSettings(settings) {
-  if (!settings || typeof settings !== "object") {
-    throw new Error("설정 형식이 올바르지 않습니다.");
+function parseEmissionPartsFromWorkbook(fileBuffer) {
+  const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    throw new Error("엑셀 시트를 찾지 못했습니다.");
   }
 
-  if (
-    !Array.isArray(settings.opinions) ||
-    settings.opinions.length < 1 ||
-    settings.opinions.some((opinion) => typeof opinion !== "string" || !opinion.trim())
-  ) {
-    throw new Error("내부의견 문구를 1개 이상 입력해야 합니다.");
+  const worksheet = workbook.Sheets[firstSheetName];
+  const rows = XLSX.utils.sheet_to_json(worksheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+  });
+
+  if (rows.length < 2) {
+    throw new Error("업로드한 엑셀에 데이터가 없습니다.");
   }
 
-  if (
-    settings.emissionParts !== undefined &&
-    (!Array.isArray(settings.emissionParts) ||
-      settings.emissionParts.some(
-        (item) =>
-          !item ||
-          typeof item !== "object" ||
-          typeof item.engineeringNumber !== "string" ||
-          !item.engineeringNumber.trim(),
-      ))
-  ) {
-    throw new Error("배출가스 부품 데이터 형식이 올바르지 않습니다.");
+  const parts = rows
+    .slice(1)
+    .map((row) => ({
+      coverage: String(row[0] || "").trim(),
+      description: String(row[1] || "").trim(),
+      includeExclude: String(row[2] || "").trim(),
+      engineeringNumber: String(row[3] || "").trim(),
+      engNo: String(row[4] || "").trim(),
+      baseName: String(row[5] || "").trim(),
+    }))
+    .filter((item) => item.engineeringNumber);
+
+  if (parts.length === 0) {
+    throw new Error("D열에서 엔지니어링 번호를 찾지 못했습니다.");
   }
 
-  const normalized = {
-    version:
-      typeof settings.version === "string" && settings.version.trim()
-        ? settings.version.trim()
-        : String(Date.now()),
-    opinions: settings.opinions.map((opinion) => opinion.trim()),
-  };
-  if (Array.isArray(settings.emissionParts)) {
-    normalized.emissionParts = settings.emissionParts.map((item) => ({
-      coverage: String(item.coverage || "").trim(),
-      description: String(item.description || "").trim(),
-      includeExclude: String(item.includeExclude || "").trim(),
-      engineeringNumber: String(item.engineeringNumber || "").trim(),
-      engNo: String(item.engNo || "").trim(),
-      baseName: String(item.baseName || "").trim(),
-    }));
-  }
-  return normalized;
+  return parts;
 }
 
 module.exports = async function handler(req, res) {
@@ -139,11 +140,6 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    if (req.method === "GET") {
-      sendJson(res, 200, await readSettings());
-      return;
-    }
-
     if (req.method !== "POST") {
       sendJson(res, 405, { error: "Method not allowed" });
       return;
@@ -161,19 +157,27 @@ module.exports = async function handler(req, res) {
     }
 
     const requestBody = await readRequestBody(req);
+    const fileContentBase64 = String(requestBody.fileContentBase64 || "").trim();
+    if (!fileContentBase64) {
+      throw new Error("업로드할 엑셀 파일 데이터가 없습니다.");
+    }
+
+    const fileBuffer = Buffer.from(fileContentBase64, "base64");
+    const emissionParts = parseEmissionPartsFromWorkbook(fileBuffer);
     const currentSettings = await readSettings();
-    const settings = normalizeSettings({
+    const nextSettings = {
       ...currentSettings,
-      ...requestBody,
-      emissionParts:
-        requestBody.emissionParts === undefined
-          ? currentSettings.emissionParts
-          : requestBody.emissionParts,
+      emissionParts,
+      version: new Date().toISOString(),
+    };
+    await writeSettings(nextSettings);
+
+    sendJson(res, 200, {
+      version: nextSettings.version,
+      emissionPartsCount: emissionParts.length,
+      fileName: String(requestBody.fileName || "").trim(),
     });
-    settings.version = new Date().toISOString();
-    await writeSettings(settings);
-    sendJson(res, 200, settings);
   } catch (error) {
-    sendJson(res, 400, { error: error.message || "설정을 처리하지 못했습니다." });
+    sendJson(res, 400, { error: error.message || "배출가스 부품 파일을 처리하지 못했습니다." });
   }
 };
